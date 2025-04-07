@@ -1,0 +1,5 @@
+numpy
+torch==2.6.0
+lightning==1.9.4
+scikit-image==0.17.2
+scikit-video

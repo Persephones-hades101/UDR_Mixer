@@ -82,8 +82,11 @@ def main():
     args = parser.parse_args()
     
     # Load pruning configuration from the pruned model
-    checkpoint = torch.load(args.pruned_model)
-    
+    try:
+        checkpoint = torch.load(args.pruned_model, map_location='cpu')
+    except FileNotFoundError:
+        print(f"ERROR: Pruned model file {args.pruned_model} not found!")
+        return
     # Create pruning configuration based on masks
     mask_dict = checkpoint.get('mask_dict', {})
     pruned_config = {
@@ -95,21 +98,50 @@ def main():
     # Add dimensions based on pruning masks (simplified)
     # In a real implementation, you would analyze the mask_dict
     # to determine actual dimensions after pruning
-    pruned_config['feat1_out'] = 16  # Example
-    pruned_config['feat2_out'] = 64  # Example
+    if mask_dict:
+        # Analyze mask_dict to determine actual dimensions after pruning
+        print("Analyzing pruned model dimensions...")
+        for layer_name, mask in mask_dict.items():
+            remaining_filters = torch.sum(mask).item()
+            total_filters = mask.numel()
+            print(f"Layer {layer_name}: {remaining_filters}/{total_filters} filters remaining")
+            
+            # Set specific dimensions based on key layers
+            if "to_feat1" in layer_name:
+                pruned_config['feat1_out'] = int(remaining_filters)
+            elif "feats1" in layer_name or "feats2" in layer_name:
+                pruned_config['feat2_out'] = int(remaining_filters) 
+            # Add more mappings as needed
+    else:
+        print("No mask_dict found in checkpoint, using default dimensions")
+        pruned_config['feat1_out'] = 16  # Default example
+        pruned_config['feat2_out'] = 64  # Default example
+    
+    print(f"Using pruned config: {pruned_config}")
     
     # Create dataset and dataloader
     opt = argparse.Namespace(**vars(args))
-    trainset = TrainDataset(opt)
-    trainloader = DataLoader(
-        trainset, 
-        batch_size=args.batch_size, 
-        pin_memory=True, 
-        shuffle=True,
-        drop_last=True, 
-        num_workers=args.num_workers
-    )
-    
+    try:
+        trainset = TrainDataset(opt)
+        print(f"Created dataset with {len(trainset)} samples")
+        
+        if len(trainset) == 0:
+            print("ERROR: Dataset is empty! Check your data directory.")
+            return
+            
+        trainloader = DataLoader(
+            trainset, 
+            batch_size=args.batch_size, 
+            pin_memory=True, 
+            shuffle=True,
+            drop_last=True, 
+            num_workers=args.num_workers
+        )
+    except Exception as e:
+        print(f"ERROR creating dataset/dataloader: {e}")
+        import traceback
+        traceback.print_exc()
+        return
     # Create the pruned model
     model = PrunedModel(
         pruned_config,

@@ -149,6 +149,42 @@ def prune_udr_mixer(model_path, prune_ratio=0.3, save_path="pruned_model.pth"):
     print(f"Model pruned with ratio {prune_ratio} and saved to {save_path}")
     return pruned_model, mask_dict
 
+def check_data_availability(data_dir):
+    """Check if training data is available and properly structured."""
+    import os
+    input_dir = os.path.join(data_dir, "input")
+    target_dir = os.path.join(data_dir, "target")
+    
+    if not os.path.exists(input_dir):
+        print(f"ERROR: Input directory {input_dir} does not exist!")
+        return False
+    
+    if not os.path.exists(target_dir):
+        print(f"ERROR: Target directory {target_dir} does not exist!")
+        return False
+    
+    input_files = [f for f in os.listdir(input_dir) if not f.startswith('.')]
+    target_files = [f for f in os.listdir(target_dir) if not f.startswith('.')]
+    
+    print(f"Found {len(input_files)} input files and {len(target_files)} target files")
+    
+    if len(input_files) == 0 or len(target_files) == 0:
+        print("ERROR: No training data found!")
+        return False
+    
+    # Verify matching files
+    input_basenames = set([os.path.splitext(f)[0] for f in input_files])
+    target_basenames = set([os.path.splitext(f)[0] for f in target_files])
+    common_files = input_basenames.intersection(target_basenames)
+    
+    print(f"Found {len(common_files)} matching input/target pairs")
+    
+    if len(common_files) == 0:
+        print("ERROR: No matching input/target pairs found!")
+        return False
+    
+    return True
+
 if __name__ == "__main__":
     model_path = "model/model.ckpt"  # Path to your trained model
     pruned_model, mask_dict = prune_udr_mixer(model_path, prune_ratio=0.3)

@@ -51,7 +51,9 @@ class Model(pl.LightningModule):
 
 def test(net, dataset, dataset_name=""):
     output_path = testopt.output_path + dataset_name + '/'
-
+    import os
+    os.makedirs(output_path, exist_ok=True)
+    
     testloader = DataLoader(dataset, batch_size=1, pin_memory=True, shuffle=False, num_workers=0)
 
     psnr = AverageMeter()
@@ -87,10 +89,10 @@ if __name__ == '__main__':
     ckpt_path = testopt.ckpt_path
     print("CKPT name : {}".format(ckpt_path))
 
-    net  = Model().load_from_checkpoint(ckpt_path).cuda()
+    net  = Model.load_from_checkpoint(ckpt_path).cuda()
     net.eval()
 
     data_path = testopt.data_path
     data_set = TestDataset(testopt)
-    # test(net, data_set)
+    test(net, data_set)
     

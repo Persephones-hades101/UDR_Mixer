@@ -100,14 +100,24 @@ class PrunedUDRMixer(nn.Module):
         self.feats7 = PrunedSFMB(reduce_dim, ffn_scale)
         
         # Upsample with specific in/out channels
-        up2_1_in = config.get('up2_1_in', reduce_dim)
-        up2_1_out = config.get('up2_1_out', feat2_out)
-        self.up2_1 = PrunedUpsample(up2_1_in, up2_1_out * 2)
-        
-        # Final processing
-        cat2_dim = config.get('cat2_dim', feat2_out * 2)
-        self.reduce_chan_level2 = nn.Conv2d(cat2_dim, feat2_out, kernel_size=1, bias=False)
-        
+        # ─── Upsample (same) ──────────────────────────────────────────────
+        up2_1_in  = config.get('up2_1_in',  reduce_dim)
+        up2_1_out = config.get('up2_1_out', feat2_out)          # 44 in your run
+        self.up2_1 = PrunedUpsample(up2_1_in, up2_1_out * 2)    # PixelShuffle(2)
+
+        # ─── Compute true concat width after PixelShuffle ────────────────
+        # PixelShuffle(2) divides channels by 4
+        upsampled_ch = (up2_1_out * 2) // 4                     # e.g. (44*2)//4 = 22
+        cat2_dim     = feat2_out + upsampled_ch                 # skip(44) + up(22) = 66
+
+        # conv that follows the concatenation
+        self.reduce_chan_level2 = nn.Conv2d(
+            in_channels=cat2_dim,
+            out_channels=feat2_out,
+            kernel_size=1,
+            bias=False
+        )
+                
         self.feats8 = PrunedSFMB(feat2_out, ffn_scale)
         self.feats9 = PrunedSFMB(feat2_out, ffn_scale)
         

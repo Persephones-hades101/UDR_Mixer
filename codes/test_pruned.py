@@ -92,7 +92,7 @@ if __name__ == '__main__':
     feat1 = pruned_config.get('feat1_out', 16)
     pruned_config['feat2_out'] = feat1 * 4  # pixel unshuffle effect
 
-print(f"Using pruned config: {pruned_config}")
+    print(f"Using pruned config: {pruned_config}")
 
     # Build model
     net = SoftPrunedModel(pruned_config)

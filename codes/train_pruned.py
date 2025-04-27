@@ -122,11 +122,14 @@ def main():
             total_filters = mask.numel()
             print(f"Layer {layer_name}: {remaining_filters}/{total_filters} filters remaining")
             
-            # Set specific dimensions based on key layers
             if "to_feat1" in layer_name:
                 pruned_config['feat1_out'] = int(remaining_filters)
-            elif "feats1" in layer_name or "feats2" in layer_name:
-                pruned_config['feat2_out'] = int(remaining_filters) 
+
+        # ── After the loop (outside the for) ─────────────────────────
+        # Derive feat2_out from feat1_out correctly
+        feat1 = pruned_config.get('feat1_out', 16)
+        pruned_config['feat2_out'] = feat1 * 4  # because of pixel unshuffle
+        # ─────────────────────────────────────────────────────────────
     else:
         print("No mask_dict found in checkpoint, using default dimensions")
         pruned_config['feat1_out'] = 16  # Default example
